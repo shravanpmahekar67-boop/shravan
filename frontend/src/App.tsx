@@ -1,6 +1,6 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Link, useLocation } from 'react-router-dom';
-import { ShieldAlert, Activity, Map as MapIcon, Users, Home, LayoutDashboard } from 'lucide-react';
+import { ShieldAlert, Activity, Map as MapIcon, Users, Home, LayoutDashboard, RefreshCw, Wifi, WifiOff } from 'lucide-react';
 import CommandCenter from './components/CommandCenter';
 import LiveMap from './components/LiveMap';
 import CitizenPortal from './components/CitizenPortal';
@@ -8,21 +8,11 @@ import CitizenDashboard from './components/CitizenDashboard';
 import LandingPage from './components/LandingPage';
 import AdminDashboard from './components/AdminDashboard';
 import LoginPage from './components/LoginPage';
+import { useNetworkStore } from './store/useNetworkStore';
 
 function DashboardLayout({ children }: { children: React.ReactNode }) {
-  const [isOnline, setIsOnline] = React.useState(typeof navigator !== 'undefined' ? navigator.onLine : true);
+  const { isOnline, isSyncing, pendingCount, toggleOnlineMode, triggerSync } = useNetworkStore();
   const location = useLocation();
-
-  React.useEffect(() => {
-    const handleOnline = () => setIsOnline(true);
-    const handleOffline = () => setIsOnline(false);
-    window.addEventListener('online', handleOnline);
-    window.addEventListener('offline', handleOffline);
-    return () => {
-      window.removeEventListener('online', handleOnline);
-      window.removeEventListener('offline', handleOffline);
-    };
-  }, []);
 
   return (
     <div className="flex h-screen w-screen bg-slate-950 text-slate-50 overflow-hidden">
@@ -96,17 +86,45 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
             {location.pathname === '/admin' ? 'Admin Control Dashboard' : location.pathname === '/map' ? 'Subcontinent Live Weather Map' : 'Command Centre Console'}
           </h2>
           <div className="flex items-center gap-3">
-            {isOnline ? (
-              <div className="flex items-center gap-2 text-green-400 border border-green-500/30 bg-green-500/10 px-3 py-1 rounded-full text-xs font-semibold">
-                <div className="w-2.5 h-2.5 rounded-full bg-green-500 animate-pulse"></div>
-                <span>🟢 Online</span>
-              </div>
-            ) : (
-              <div className="flex items-center gap-2 text-amber-400 border border-amber-500/30 bg-amber-500/10 px-3 py-1 rounded-full text-xs font-semibold">
-                <div className="w-2.5 h-2.5 rounded-full bg-amber-500 animate-pulse"></div>
-                <span>🟠 Offline — Emergency mode</span>
-              </div>
+            {pendingCount > 0 && (
+              <span className="px-2.5 py-1 bg-amber-500/20 text-amber-400 border border-amber-500/40 rounded-full text-xs font-bold animate-pulse">
+                {pendingCount} Pending Sync
+              </span>
             )}
+
+            {isOnline && (
+              <button
+                onClick={() => triggerSync()}
+                disabled={isSyncing}
+                className="px-3 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 rounded-full text-xs font-semibold flex items-center gap-1.5 transition-all"
+                title="Sync offline incidents with server"
+              >
+                <RefreshCw className={`w-3.5 h-3.5 ${isSyncing ? 'animate-spin text-blue-400' : ''}`} />
+                <span>{isSyncing ? 'Syncing...' : 'Sync Now'}</span>
+              </button>
+            )}
+
+            <button
+              onClick={() => toggleOnlineMode()}
+              className={`flex items-center gap-2 px-3.5 py-1.5 rounded-full text-xs font-semibold transition-all border shadow-sm cursor-pointer ${
+                isOnline
+                  ? 'bg-green-500/10 border-green-500/30 text-green-400 hover:bg-green-500/20'
+                  : 'bg-amber-500/10 border-amber-500/30 text-amber-400 hover:bg-amber-500/20'
+              }`}
+              title="Click to toggle between Online API mode and Offline IndexedDB mode"
+            >
+              {isOnline ? (
+                <>
+                  <Wifi className="w-3.5 h-3.5 text-green-400" />
+                  <span>🟢 Online Mode</span>
+                </>
+              ) : (
+                <>
+                  <WifiOff className="w-3.5 h-3.5 text-amber-400" />
+                  <span>🟠 Offline Mode</span>
+                </>
+              )}
+            </button>
           </div>
         </header>
         

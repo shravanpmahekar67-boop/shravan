@@ -1,11 +1,13 @@
 import React, { useState } from 'react';
 import { Activity, ShieldAlert, Clock, MapPin, CheckCircle, Phone, ExternalLink, AlertCircle, Check, Loader2, Megaphone, Mail, Mic } from 'lucide-react';
 import LiveMap from './LiveMap';
-import { HELPER_CONTACT_NAME, HELPER_PHONE_NUMBER } from '../config';
+import { HELPER_CONTACT_NAME, HELPER_PHONE_NUMBER, API_BASE_URL } from '../config';
 import { formatIncidentTime } from '../utils/dateFormatter';
 import { getAllOfflineIncidents, cacheOnlineIncidents, type OfflineIncident } from '../utils/offlineStore';
+import { useNetworkStore } from '../store/useNetworkStore';
 
 export default function CommandCenter() {
+  const { isOnline } = useNetworkStore();
   const [selectedIncident, setSelectedIncident] = useState<any>(null);
   const [incidents, setIncidents] = useState<any[]>([]);
   const [isNotifying, setIsNotifying] = useState(false);
@@ -17,17 +19,17 @@ export default function CommandCenter() {
   const loadCombinedIncidents = async () => {
     try {
       let serverIncidents: any[] = [];
-      let isOnline = navigator.onLine;
+      const currentOnline = useNetworkStore.getState().isOnline;
 
-      if (isOnline) {
+      if (currentOnline) {
         try {
-          const res = await fetch('http://localhost:8000/incidents');
+          const res = await fetch(`${API_BASE_URL}/incidents`);
           if (res.ok) {
             serverIncidents = await res.json();
             await cacheOnlineIncidents(serverIncidents);
           }
         } catch (e) {
-          isOnline = false;
+          console.warn("Failed to fetch server incidents:", e);
         }
       }
 
@@ -108,10 +110,10 @@ export default function CommandCenter() {
       window.removeEventListener('online', loadCombinedIncidents);
       window.removeEventListener('offline', loadCombinedIncidents);
     };
-  }, [selectedIncident?.id]);
+  }, [selectedIncident?.id, isOnline]);
 
   const handleNotifyHelper = async (incidentId: string) => {
-    if (!navigator.onLine) {
+    if (!useNetworkStore.getState().isOnline) {
       setNotificationError("Offline — Notification pending connection.");
       return;
     }
@@ -119,7 +121,7 @@ export default function CommandCenter() {
     setIsNotifying(true);
     setNotificationError(null);
     try {
-      const res = await fetch(`http://localhost:8000/incidents/${incidentId}/notify-helper`, {
+      const res = await fetch(`${API_BASE_URL}/incidents/${incidentId}/notify-helper`, {
         method: 'POST'
       });
       if (!res.ok) throw new Error('Notification failed');
@@ -136,7 +138,7 @@ export default function CommandCenter() {
   };
 
   const handleSendEmailAlert = async (incidentId: string) => {
-    if (!navigator.onLine) {
+    if (!useNetworkStore.getState().isOnline) {
       setEmailError("Offline — Email pending connection.");
       return;
     }
@@ -144,7 +146,7 @@ export default function CommandCenter() {
     setIsSendingEmail(true);
     setEmailError(null);
     try {
-      const res = await fetch(`http://localhost:8000/incidents/${incidentId}/send-email`, {
+      const res = await fetch(`${API_BASE_URL}/incidents/${incidentId}/send-email`, {
         method: 'POST'
       });
       if (!res.ok) throw new Error('Email alert failed');

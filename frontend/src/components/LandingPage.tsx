@@ -1,21 +1,10 @@
-import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { ShieldAlert, Activity, Users, ArrowRight, Zap, Wifi, WifiOff, CheckCircle, Database } from 'lucide-react';
+import { useNetworkStore } from '../store/useNetworkStore';
 
 export default function LandingPage() {
-  const [isOnline, setIsOnline] = useState(typeof navigator !== 'undefined' ? navigator.onLine : true);
+  const { isOnline, toggleOnlineMode } = useNetworkStore();
   const navigate = useNavigate();
-
-  useEffect(() => {
-    const handleOnline = () => setIsOnline(true);
-    const handleOffline = () => setIsOnline(false);
-    window.addEventListener('online', handleOnline);
-    window.addEventListener('offline', handleOffline);
-    return () => {
-      window.removeEventListener('online', handleOnline);
-      window.removeEventListener('offline', handleOffline);
-    };
-  }, []);
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-50 overflow-auto flex flex-col selection:bg-red-500 selection:text-white">
@@ -34,19 +23,29 @@ export default function LandingPage() {
 
         {/* Status Indicator & Navigation */}
         <div className="flex items-center gap-4 md:gap-6">
-          {isOnline ? (
-            <div className="flex items-center gap-2 px-3 py-1 bg-green-500/10 border border-green-500/30 text-green-400 rounded-full text-xs font-semibold">
-              <Wifi className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">🟢 Online Service Active</span>
-              <span className="sm:hidden">Online</span>
-            </div>
-          ) : (
-            <div className="flex items-center gap-2 px-3 py-1 bg-amber-500/10 border border-amber-500/30 text-amber-400 rounded-full text-xs font-semibold animate-pulse">
-              <WifiOff className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">🟠 Offline Mode — IndexedDB Sync</span>
-              <span className="sm:hidden">Offline</span>
-            </div>
-          )}
+          <button
+            onClick={() => toggleOnlineMode()}
+            className={`flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold cursor-pointer transition-all border ${
+              isOnline
+                ? 'bg-green-500/10 border-green-500/30 text-green-400 hover:bg-green-500/20'
+                : 'bg-amber-500/10 border-amber-500/30 text-amber-400 hover:bg-amber-500/20'
+            }`}
+            title="Click to toggle between Online mode and Offline mode"
+          >
+            {isOnline ? (
+              <>
+                <Wifi className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">🟢 Online Service Active</span>
+                <span className="sm:hidden">Online</span>
+              </>
+            ) : (
+              <>
+                <WifiOff className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">🟠 Offline Mode — IndexedDB Sync</span>
+                <span className="sm:hidden">Offline</span>
+              </>
+            )}
+          </button>
 
           <nav className="hidden md:flex items-center gap-4 text-xs font-semibold">
             <Link to="/report" className="text-slate-300 hover:text-white transition-colors">Citizen Portal</Link>

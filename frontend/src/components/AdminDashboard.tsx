@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { ShieldAlert, Activity, MapPin, Mail, Phone, AlertTriangle, ArrowRight, RefreshCw, Layers } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
+import { API_BASE_URL } from '../config';
 
 interface Incident {
   id: string;
@@ -38,8 +39,8 @@ export default function AdminDashboard() {
     setIsRefreshing(true);
     try {
       const [incRes, imdRes] = await Promise.all([
-        fetch('http://localhost:8000/incidents').catch(() => null),
-        fetch('http://localhost:8000/imd-alerts').catch(() => null)
+        fetch(`${API_BASE_URL}/incidents`).catch(() => null),
+        fetch(`${API_BASE_URL}/imd-alerts`).catch(() => null)
       ]);
 
       if (incRes && incRes.ok) {
@@ -77,7 +78,7 @@ export default function AdminDashboard() {
     const targetId = incidents[0].id;
     setTestEmailStatus("Sending test email to shreyasbpalan5@gmail.com...");
     try {
-      const res = await fetch(`http://localhost:8000/incidents/${targetId}/send-email`, { method: 'POST' });
+      const res = await fetch(`${API_BASE_URL}/incidents/${targetId}/send-email`, { method: 'POST' });
       if (res.ok) {
         setTestEmailStatus("✓ Telemetry email sent successfully to shreyasbpalan5@gmail.com");
         fetchData();

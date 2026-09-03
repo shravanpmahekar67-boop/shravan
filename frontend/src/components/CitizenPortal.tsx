@@ -1,9 +1,12 @@
 import React, { useState, useRef } from 'react';
-import { Camera, MapPin, Mic, Send, AlertTriangle, X, ExternalLink, Loader2, Check, Image as ImageIcon, Phone, Mail } from 'lucide-react';
+import { Camera, MapPin, Mic, Send, AlertTriangle, X, ExternalLink, Loader2, Check, Image as ImageIcon, Phone, Mail, Wifi, WifiOff } from 'lucide-react';
 import { useAuthStore } from '../store/useAuthStore';
 import { saveOfflineIncident, type OfflineIncident } from '../utils/offlineStore';
+import { useNetworkStore } from '../store/useNetworkStore';
+import { API_BASE_URL } from '../config';
 
 export default function CitizenPortal() {
+  const { isOnline, toggleOnlineMode, checkPendingCount } = useNetworkStore();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [isOfflineSaved, setIsOfflineSaved] = useState(false);
@@ -236,8 +239,8 @@ export default function CitizenPortal() {
 
     const nowIso = new Date().toISOString();
 
-    if (!navigator.onLine) {
-      console.warn("User is offline. Saving report locally to IndexedDB.");
+    if (!isOnline) {
+      console.warn("Mode is offline. Saving report locally to IndexedDB.");
       const offlineItem: OfflineIncident = {
         id: `INC-OFFLINE-${Date.now().toString().slice(-6)}`,
         type: reportType,
@@ -257,6 +260,7 @@ export default function CitizenPortal() {
         sync_status: 'pending'
       };
       await saveOfflineIncident(offlineItem);
+      await checkPendingCount();
       setIsOfflineSaved(true);
       setCommandCenterEmailStatus('pending');
       setIsSubmitting(false);
@@ -287,7 +291,7 @@ export default function CitizenPortal() {
     }
 
     try {
-      const res = await fetch('http://localhost:8000/incidents', {
+      const res = await fetch(`${API_BASE_URL}/incidents`, {
         method: 'POST',
         body: formData
       });
@@ -306,7 +310,7 @@ export default function CitizenPortal() {
 
       if (email && serverIncident?.id) {
         try {
-          const emailRes = await fetch(`http://localhost:8000/incidents/${serverIncident.id}/send-citizen-email`, {
+          const emailRes = await fetch(`${API_BASE_URL}/incidents/${serverIncident.id}/send-citizen-email`, {
             method: 'POST'
           });
           if (emailRes.ok) {
@@ -354,7 +358,7 @@ export default function CitizenPortal() {
     if (!lastIncidentId) return;
     setCommandCenterEmailStatus('retrying');
     try {
-      const res = await fetch(`http://localhost:8000/incidents/${lastIncidentId}/send-email`, {
+      const res = await fetch(`${API_BASE_URL}/incidents/${lastIncidentId}/send-email`, {
         method: 'POST'
       });
       if (res.ok) {
@@ -462,7 +466,29 @@ export default function CitizenPortal() {
           <AlertTriangle className="w-8 h-8 text-orange-500" />
           <h1 className="text-2xl font-bold tracking-wider">Report Emergency</h1>
         </div>
-        <div className="flex items-center gap-6">
+        <div className="flex items-center gap-4">
+          <button
+            type="button"
+            onClick={() => toggleOnlineMode()}
+            className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold cursor-pointer transition-all border ${
+              isOnline
+                ? 'bg-green-500/10 border-green-500/30 text-green-400 hover:bg-green-500/20'
+                : 'bg-amber-500/10 border-amber-500/30 text-amber-400 hover:bg-amber-500/20'
+            }`}
+            title="Click to toggle between Online API mode and Offline IndexedDB mode"
+          >
+            {isOnline ? (
+              <>
+                <Wifi className="w-3.5 h-3.5 text-green-400" />
+                <span>🟢 Online Mode</span>
+              </>
+            ) : (
+              <>
+                <WifiOff className="w-3.5 h-3.5 text-amber-400" />
+                <span>🟠 Offline Mode</span>
+              </>
+            )}
+          </button>
           <button onClick={() => window.history.back()} className="text-sm text-slate-400 hover:text-white font-medium transition-colors">
             Cancel & Go Back
           </button>

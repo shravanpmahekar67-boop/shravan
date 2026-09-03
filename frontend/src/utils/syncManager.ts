@@ -1,10 +1,7 @@
 import { getPendingIncidents, markIncidentSynced } from './offlineStore';
+import { API_BASE_URL } from '../config';
 
 export async function syncPendingIncidents(): Promise<{ syncedCount: number; errors: any[] }> {
-  if (!navigator.onLine) {
-    return { syncedCount: 0, errors: ['Device is offline'] };
-  }
-
   const pending = await getPendingIncidents();
   if (pending.length === 0) {
     return { syncedCount: 0, errors: [] };
@@ -40,7 +37,7 @@ export async function syncPendingIncidents(): Promise<{ syncedCount: number; err
         formData.append('audio', audioFile);
       }
 
-      const response = await fetch('http://localhost:8000/incidents', {
+      const response = await fetch(`${API_BASE_URL}/incidents`, {
         method: 'POST',
         body: formData
       });
@@ -59,7 +56,7 @@ export async function syncPendingIncidents(): Promise<{ syncedCount: number; err
       // Trigger helper notification if requested
       if (item.notified && serverIncident?.id) {
         try {
-          await fetch(`http://localhost:8000/incidents/${serverIncident.id}/notify-helper`, {
+          await fetch(`${API_BASE_URL}/incidents/${serverIncident.id}/notify-helper`, {
             method: 'POST'
           });
         } catch (e) {
@@ -70,7 +67,7 @@ export async function syncPendingIncidents(): Promise<{ syncedCount: number; err
       // Trigger email alert if requested
       if (item.email_sent && serverIncident?.id) {
         try {
-          await fetch(`http://localhost:8000/incidents/${serverIncident.id}/send-email`, {
+          await fetch(`${API_BASE_URL}/incidents/${serverIncident.id}/send-email`, {
             method: 'POST'
           });
         } catch (e) {
@@ -97,3 +94,4 @@ export function setupSyncManager() {
     syncPendingIncidents();
   });
 }
+

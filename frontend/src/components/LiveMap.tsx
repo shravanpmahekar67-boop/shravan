@@ -2,7 +2,9 @@ import React, { useEffect } from 'react';
 import { MapContainer, TileLayer, Marker, Popup, Circle, useMap } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
-import { cacheImdAlerts, getCachedImdAlerts } from '../utils/offlineStore';
+import { cacheImdAlerts, getCachedImdAlerts, getAllOfflineIncidents } from '../utils/offlineStore';
+import { useNetworkStore } from '../store/useNetworkStore';
+import { API_BASE_URL } from '../config';
 
 // Fix for default marker icons in react-leaflet
 delete (L.Icon.Default.prototype as any)._getIconUrl;
@@ -68,6 +70,7 @@ function ChangeView({ center, zoom }: { center: [number, number]; zoom: number }
 }
 
 export default function LiveMap() {
+  const { isOnline } = useNetworkStore();
   const [targetView, setTargetView] = React.useState<{ center: [number, number]; zoom: number }>({
     center: INDIA_CENTER,
     zoom: 5
@@ -80,45 +83,63 @@ export default function LiveMap() {
 
   React.useEffect(() => {
     const fetchData = async () => {
-      try {
-        const res = await fetch('http://localhost:8000/incidents');
-        if (res.ok) {
-          const data = await res.json();
-          setIncidents(data);
-        }
-      } catch (err) {
-        console.error("Failed to fetch incidents", err);
-      }
+      const currentOnline = useNetworkStore.getState().isOnline;
 
-      try {
-        const alertRes = await fetch('http://localhost:8000/imd-alerts');
-        if (alertRes.ok) {
-          const alertData = await alertRes.json();
-          setImdAlerts(alertData);
-          setImdError(false);
-          setLastImdSync(new Date().toLocaleTimeString());
-          await cacheImdAlerts(alertData);
-        } else {
-          throw new Error("IMD response error");
+      if (currentOnline) {
+        try {
+          const res = await fetch(`${API_BASE_URL}/incidents`);
+          if (res.ok) {
+            const data = await res.json();
+            setIncidents(data);
+          }
+        } catch (err) {
+          console.error("Failed to fetch incidents", err);
         }
-      } catch (err) {
-        console.warn("Failed to fetch live IMD alerts, falling back to cached IndexedDB store:", err);
-        const cached = await getCachedImdAlerts();
-        if (cached && cached.length > 0) {
-          setImdAlerts(cached);
+
+        try {
+          const alertRes = await fetch(`${API_BASE_URL}/imd-alerts`);
+          if (alertRes.ok) {
+            const alertData = await alertRes.json();
+            setImdAlerts(alertData);
+            setImdError(false);
+            setLastImdSync(new Date().toLocaleTimeString());
+            await cacheImdAlerts(alertData);
+          } else {
+            throw new Error("IMD response error");
+          }
+        } catch (err) {
+          console.warn("Failed to fetch live IMD alerts, falling back to cached IndexedDB store:", err);
+          const cached = await getCachedImdAlerts();
+          setImdAlerts(cached || []);
           setImdError(true);
-        } else {
-          setImdError(true);
+        } finally {
+          setIsLoading(false);
         }
-      } finally {
-        setIsLoading(false);
+      } else {
+        // Offline mode: Load from local IndexedDB
+        try {
+          const [offlineInc, cachedAlerts] = await Promise.all([
+            getAllOfflineIncidents(),
+            getCachedImdAlerts()
+          ]);
+          setIncidents(offlineInc.map(i => ({
+            ...i,
+            location: { lat: i.lat, lng: i.lng }
+          })));
+          setImdAlerts(cachedAlerts || []);
+          setImdError(true);
+        } catch (e) {
+          console.warn("Failed to load offline map data:", e);
+        } finally {
+          setIsLoading(false);
+        }
       }
     };
 
     fetchData();
     const interval = setInterval(fetchData, 3000);
     return () => clearInterval(interval);
-  }, []);
+  }, [isOnline]);
 
   const [userLocation, setUserLocation] = React.useState<[number, number] | null>(null);
 

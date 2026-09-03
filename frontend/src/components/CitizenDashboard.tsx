@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useAuthStore } from '../store/useAuthStore';
 import { useNavigate, Link } from 'react-router-dom';
 import { FileText, Plus, ShieldAlert, Clock, MapPin } from 'lucide-react';
+import { API_BASE_URL } from '../config';
 
 interface Incident {
   id: string;
@@ -24,7 +25,7 @@ export default function CitizenDashboard() {
       return;
     }
 
-    fetch(`http://localhost:8000/incidents/user/${email}`)
+    fetch(`${API_BASE_URL}/incidents/user/${email}`)
       .then(res => res.json())
       .then(data => {
         setReports(data);

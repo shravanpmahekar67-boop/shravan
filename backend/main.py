@@ -1,3 +1,12 @@
+import sys
+import os
+
+if hasattr(sys.stdout, 'reconfigure'):
+    try:
+        sys.stdout.reconfigure(encoding='utf-8', errors='replace')
+    except Exception:
+        pass
+
 from fastapi import FastAPI, Request, File, UploadFile, Form, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
@@ -5,7 +14,6 @@ from pydantic import BaseModel
 from typing import List, Optional
 from datetime import datetime, timezone
 import uuid
-import os
 import requests
 
 try:
